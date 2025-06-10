@@ -1,9 +1,9 @@
-## TowerOfCode
+## CodeTower
 
-### What is TowerOfCode?
-**TowerOfCode** is a powerful command-line utility designed to help .NET developers safely restructure their projects while maintaining code integrity and preserving dependencies. Inspired by the Tower of Hanoi puzzle, the tool ensures a step-by-step, safe transition of code elements between layers and modules.
+### What is CodeTower?
+**CodeTower** is a powerful command-line utility designed to help .NET developers safely restructure their projects while maintaining code integrity and preserving dependencies. Inspired by the Tower of Hanoi puzzle, the tool ensures a step-by-step, safe transition of code elements between layers and modules.
 
-### Why use TowerOfCode?
+### Why use CodeTower?
 * **Safe Code Migration** - Moves code elements between layers with minimal risk of breaking existing functionality
 * **Dependency Management** - Automatically updates all references and namespace usages
 * **Step-by-Step Process** - Uses the Tower of Hanoi algorithm for safe multi-step restructuring
