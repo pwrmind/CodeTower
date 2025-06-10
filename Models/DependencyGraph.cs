@@ -1,4 +1,4 @@
-﻿namespace CodeTower;
+﻿namespace CodeTower.Models;
 
 // Вспомогательные модели
 public class DependencyGraph

@@ -1,4 +1,4 @@
-﻿namespace CodeTower;
+﻿namespace CodeTower.Models;
 
 // Модели конфигурации
 // Модели конфигурации с новыми типами преобразований

@@ -5,6 +5,7 @@ using CodeTower.Interfaces;
 using Microsoft.CodeAnalysis.Rename;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Text;
+using CodeTower.Models;
 
 namespace CodeTower.Services;
 

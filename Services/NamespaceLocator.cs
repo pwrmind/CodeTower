@@ -1,6 +1,7 @@
-﻿using Microsoft.CodeAnalysis;
+﻿using CodeTower.Models;
+using Microsoft.CodeAnalysis;
 
-namespace CodeTower;
+namespace CodeTower.Services;
 
 //Реализация поиска пространств имён
 public static class NamespaceLocator

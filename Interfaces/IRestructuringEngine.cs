@@ -1,3 +1,5 @@
+using CodeTower.Models;
+
 namespace CodeTower.Interfaces;
 
 public interface IRestructuringEngine

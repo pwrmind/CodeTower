@@ -1,6 +1,6 @@
 ﻿using System.Text.Json;
 
-namespace CodeTower;
+namespace CodeTower.Models;
 
 public class RestructuringConfig
 {

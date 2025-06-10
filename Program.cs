@@ -1,4 +1,5 @@
 ﻿using CodeTower.Interfaces;
+using CodeTower.Models;
 using CodeTower.Services;
 using Microsoft.Extensions.DependencyInjection;
 using System.CommandLine;

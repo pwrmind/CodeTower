@@ -1,4 +1,4 @@
-﻿namespace CodeTower;
+﻿namespace CodeTower.Models;
 
 public class DependencyConflict
 {
