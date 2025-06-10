@@ -1,28 +1,104 @@
-## CodeTower
+# CodeTower
 
-### What is CodeTower?
-**CodeTower** is a powerful command-line utility designed to help .NET developers safely restructure their projects while maintaining code integrity and preserving dependencies. Inspired by the Tower of Hanoi puzzle, the tool ensures a step-by-step, safe transition of code elements between layers and modules.
+CodeTower is a powerful .NET solution restructuring and architecture scaffolding tool that helps you maintain clean and organized codebases. It provides features for restructuring existing solutions and generating new architectural patterns.
 
-### Why use CodeTower?
-* **Safe Code Migration** - Moves code elements between layers with minimal risk of breaking existing functionality
-* **Dependency Management** - Automatically updates all references and namespace usages
-* **Step-by-Step Process** - Uses the Tower of Hanoi algorithm for safe multi-step restructuring
-* **Fine-Grained Control** - Supports both class-level and project-level migrations
-* **Namespace Renaming** - Handles complex namespace changes across multiple projects
-* **Rollback Capabilities** - Provides options to revert changes if needed
+## Features
 
-### How it works
-1. **Analysis Phase**
-   * Scans project structure
-   * Builds dependency graph
-   * Identifies safe migration paths
+- **Solution Restructuring**
+  - Move and rename namespaces
+  - Extract classes to new files
+  - Analyze and validate dependencies
+  - Automatic backup before changes
+  - Comprehensive logging
 
-2. **Migration Phase**
-   * Moves code to temporary location
-   * Updates references and usages
-   * Performs final move to target location
+- **Architecture Scaffolding**
+  - Clean Architecture template
+  - Onion Architecture template (coming soon)
+  - Vertical Slice Architecture template (coming soon)
 
-3. **Verification Phase**
-   * Validates all references
-   * Checks namespace consistency
-   * Ensures buildability
+- **Safety Features**
+  - Automatic solution backup
+  - Dependency conflict detection
+  - Rollback capability
+  - Detailed logging
+
+## Installation
+
+```bash
+dotnet tool install --global CodeTower
+```
+
+## Usage
+
+### Restructuring a Solution
+
+```bash
+codetower restructure --solution YourSolution.sln --config restructure.json
+```
+
+Example configuration file (restructure.json):
+```json
+{
+  "transformations": [
+    {
+      "type": "MoveNamespace",
+      "source": "OldNamespace",
+      "target": "NewNamespace"
+    },
+    {
+      "type": "ExtractClass",
+      "source": "LargeClass",
+      "target": "Infrastructure.Services"
+    }
+  ]
+}
+```
+
+### Generating Architecture Scaffolding
+
+```bash
+codetower generate --solution YourSolution.sln --template cleanarchitecture
+```
+
+## Supported Transformation Types
+
+- `MoveNamespace`: Move classes from one namespace to another
+- `RenameNamespace`: Rename an existing namespace
+- `ExtractClass`: Move a class to a new file/namespace
+- `GenerateLayer`: Create a new architectural layer with predefined structure
+
+## Architecture Templates
+
+### Clean Architecture
+- Domain Layer
+  - Entities
+  - Value Objects
+  - Interfaces
+- Application Layer
+  - Use Cases
+  - Interfaces
+  - DTOs
+  - Services
+- Infrastructure Layer
+  - Data
+  - Services
+  - Repositories
+  - External
+- Presentation Layer
+
+## Contributing
+
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add some amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## Acknowledgments
+
+- Built with [Roslyn](https://github.com/dotnet/roslyn)
+- Command-line interface powered by [System.CommandLine](https://github.com/dotnet/command-line-api)
