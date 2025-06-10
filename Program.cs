@@ -8,71 +8,77 @@ using System.CommandLine;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 
-// Конфигурация CLI
-var rootCommand = new RootCommand("DotNet Architecture Restructuring Tool");
-
-var solutionOption = new Option<FileInfo>("--solution", "Path to solution file") { IsRequired = true };
-var configOption = new Option<FileInfo>("--config", "Path to restructuring config file");
-
-var restructureCommand = new Command("restructure", "Perform solution restructuring");
-restructureCommand.AddOption(solutionOption);
-restructureCommand.AddOption(configOption);
-
-var generateCommand = new Command("generate", "Generate scaffolding for architecture");
-generateCommand.AddOption(solutionOption);
-generateCommand.AddOption(new Option<string>("--template", "Architecture template name"));
-
-rootCommand.AddCommand(restructureCommand);
-rootCommand.AddCommand(generateCommand);
-
-restructureCommand.SetHandler(async (solution, config) => 
+internal class Program
 {
-    await RestructureSolutionAsync(solution, config);
-}, solutionOption, configOption);
-
-generateCommand.SetHandler(async (solution, template) => 
-{
-    await GenerateScaffoldingAsync(solution, template);
-}, solutionOption, new Option<string>("--template"));
-
-await rootCommand.InvokeAsync(args);
-
-// Основные методы
-async Task RestructureSolutionAsync(FileInfo solutionFile, FileInfo configFile)
-{
-    var config = await RestructuringConfig.LoadAsync(configFile);
-    var engine = new RestructuringEngine();
-    await engine.InitializeAsync(solutionFile.FullName);
-    
-    foreach (var transformation in config.Transformations)
+    private static async Task Main(string[] args)
     {
-        await engine.ApplyTransformationAsync(transformation);
+        // Конфигурация CLI
+        var rootCommand = new RootCommand("DotNet Architecture Restructuring Tool");
+
+        var solutionOption = new Option<FileInfo>("--solution", "Path to solution file") { IsRequired = true };
+        var configOption = new Option<FileInfo>("--config", "Path to restructuring config file");
+
+        var restructureCommand = new Command("restructure", "Perform solution restructuring");
+        restructureCommand.AddOption(solutionOption);
+        restructureCommand.AddOption(configOption);
+
+        var generateCommand = new Command("generate", "Generate scaffolding for architecture");
+        generateCommand.AddOption(solutionOption);
+        generateCommand.AddOption(new Option<string>("--template", "Architecture template name"));
+
+        rootCommand.AddCommand(restructureCommand);
+        rootCommand.AddCommand(generateCommand);
+
+        restructureCommand.SetHandler(async (solution, config) =>
+        {
+            await RestructureSolutionAsync(solution, config);
+        }, solutionOption, configOption);
+
+        generateCommand.SetHandler(async (solution, template) =>
+        {
+            await GenerateScaffoldingAsync(solution, template);
+        }, solutionOption, new Option<string>("--template"));
+
+        await rootCommand.InvokeAsync(args);
+
+        // Основные методы
+        async Task RestructureSolutionAsync(FileInfo solutionFile, FileInfo configFile)
+        {
+            var config = await RestructuringConfig.LoadAsync(configFile);
+            var engine = new RestructuringEngine();
+            await engine.InitializeAsync(solutionFile.FullName);
+
+            foreach (var transformation in config.Transformations)
+            {
+                await engine.ApplyTransformationAsync(transformation);
+            }
+
+            engine.CommitChangesAsync();
+        }
+
+        async Task GenerateScaffoldingAsync(FileInfo solutionFile, string templateName)
+        {
+            var generator = new ScaffoldingGenerator();
+            await generator.InitializeAsync(solutionFile.FullName);
+
+            switch (templateName.ToLower())
+            {
+                case "cleanarchitecture":
+                    await generator.GenerateCleanArchitectureAsync();
+                    break;
+                case "onion":
+                    //await generator.GenerateOnionArchitectureAsync();
+                    break;
+                case "verticalslice":
+                    //await generator.GenerateVerticalSliceAsync();
+                    break;
+                default:
+                    throw new ArgumentException($"Unknown template: {templateName}");
+            }
+
+            generator.CommitChangesAsync();
+        }
     }
-    
-    engine.CommitChangesAsync();
-}
-
-async Task GenerateScaffoldingAsync(FileInfo solutionFile, string templateName)
-{
-    var generator = new ScaffoldingGenerator();
-    await generator.InitializeAsync(solutionFile.FullName);
-
-    switch (templateName.ToLower())
-    {
-        case "cleanarchitecture":
-            await generator.GenerateCleanArchitectureAsync();
-            break;
-        case "onion":
-            //await generator.GenerateOnionArchitectureAsync();
-            break;
-        case "verticalslice":
-            //await generator.GenerateVerticalSliceAsync();
-            break;
-        default:
-            throw new ArgumentException($"Unknown template: {templateName}");
-    }
-
-    generator.CommitChangesAsync();
 }
 
 //Реализация поиска пространств имён
