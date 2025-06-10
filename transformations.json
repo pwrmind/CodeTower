@@ -1,0 +1,28 @@
+{
+  "Transformations": [
+    {
+      "Type": "GenerateLayer",
+      "Target": "Domain",
+      "Options": {
+        "subfolders": "Entities,ValueObjects,Interfaces"
+      }
+    },
+    {
+      "Type": "GenerateLayer",
+      "Target": "Application",
+      "Options": {
+        "subfolders": "UseCases,Services,Interfaces"
+      }
+    },
+    {
+      "Type": "MoveNamespace",
+      "Source": "Legacy.OrderManagement",
+      "Target": "Domain.OrderAggregate"
+    },
+    {
+      "Type": "ExtractClass",
+      "Source": "OrderService",
+      "Target": "Application.Services"
+    }
+  ]
+}
