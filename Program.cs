@@ -5,8 +5,8 @@ using Microsoft.CodeAnalysis.MSBuild;
 using Microsoft.CodeAnalysis.Rename;
 using Microsoft.CodeAnalysis.Text;
 using System.CommandLine;
-using System.Reflection;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 
 // Конфигурация CLI
 var rootCommand = new RootCommand("DotNet Architecture Restructuring Tool");
@@ -75,7 +75,7 @@ async Task GenerateScaffoldingAsync(FileInfo solutionFile, string templateName)
     generator.CommitChangesAsync();
 }
 
-// Реализация поиска пространств имён
+//Реализация поиска пространств имён
 public static class NamespaceLocator
 {
     public static IEnumerable<INamespaceSymbol> FindNamespaces(Compilation compilation, string namespaceName)
@@ -88,8 +88,8 @@ public static class NamespaceLocator
     }
 
     private static void FindNamespacesRecursive(
-        INamespaceSymbol currentNamespace, 
-        string targetName, 
+        INamespaceSymbol currentNamespace,
+        string targetName,
         List<INamespaceSymbol> results)
     {
         if (currentNamespace.ToDisplayString() == targetName)
@@ -101,6 +101,49 @@ public static class NamespaceLocator
         {
             FindNamespacesRecursive(subNamespace, targetName, results);
         }
+    }
+
+    public static IEnumerable<INamespaceSymbol> FindNamespacesByPattern(
+        Compilation compilation,
+        string pattern)
+    {
+        var regex = new WildcardPattern(pattern);
+        return compilation.GlobalNamespace
+            .GetNamespaceMembers()
+            .SelectMany(ns => FindMatchingNamespaces(ns, regex))
+            .ToList();
+    }
+
+    public static IEnumerable<INamespaceSymbol> FindMatchingNamespaces(
+        INamespaceSymbol ns,
+        WildcardPattern pattern)
+    {
+        if (pattern.IsMatch(ns.ToDisplayString()))
+        {
+            yield return ns;
+        }
+
+        foreach (var subNs in ns.GetNamespaceMembers())
+        {
+            foreach (var match in FindMatchingNamespaces(subNs, pattern))
+            {
+                yield return match;
+            }
+        }
+    }
+}
+
+public class WildcardPattern
+{
+    string _pattern;
+    public WildcardPattern(string pattern)
+    {
+        _pattern = pattern;
+    }
+    public bool IsMatch(string input)
+    {
+        string regexPattern = "^" + Regex.Escape(_pattern).Replace("\\*", ".*").Replace("\\?", ".") + "$";
+        return Regex.IsMatch(input, regexPattern);
     }
 }
 
@@ -123,22 +166,22 @@ public class RestructuringEngine
         {
             case TransformationType.MoveNamespace:
                 await MoveNamespaceWithCodeGenerationAsync(
-                    transformation.Source, 
+                    transformation.Source,
                     transformation.Target);
                 break;
-                
+
             case TransformationType.RenameNamespace:
                 await RenameNamespaceWithCodeGenerationAsync(
-                    transformation.Source, 
+                    transformation.Source,
                     transformation.Target);
                 break;
-                
+
             case TransformationType.ExtractClass:
                 await ExtractClassToNewFileAsync(
-                    transformation.Source, 
+                    transformation.Source,
                     transformation.Target);
                 break;
-                
+
             case TransformationType.GenerateLayer:
                 await GenerateArchitectureLayerAsync(
                     transformation.Target,
@@ -153,7 +196,7 @@ public class RestructuringEngine
         string tempNs = $"{sourceNs}.__TEMP_{Guid.NewGuid().ToString("N")[..6]}";
         await RenameNamespaceInternalAsync(sourceNs, tempNs);
         await RenameNamespaceInternalAsync(tempNs, targetNs);
-        
+
         // Генерация нового слоя
         await GenerateNamespaceStructureAsync(targetNs);
     }
@@ -170,16 +213,16 @@ public class RestructuringEngine
         {
             var compilation = await project.GetCompilationAsync();
             var namespaces = NamespaceLocator.FindNamespaces(compilation, oldNs);
-            
+
             foreach (var nsSymbol in namespaces)
             {
                 _solution = await Renamer.RenameSymbolAsync(
-                    _solution, 
-                    nsSymbol, 
-                    new SymbolRenameOptions(), 
+                    _solution,
+                    nsSymbol,
+                    new SymbolRenameOptions(),
                     newNs);
             }
-            
+
             // Генерация физической структуры
             await GeneratePhysicalStructureAsync(project, newNs);
         }
@@ -194,14 +237,14 @@ public class RestructuringEngine
         {
             var projectPath = Path.GetDirectoryName(project.FilePath);
             var fullPath = Path.Combine(projectPath, path);
-            
+
             if (!Directory.Exists(fullPath))
             {
                 Directory.CreateDirectory(fullPath);
-                
+
                 // Генерация начального класса
                 await GenerateInitialClassAsync(
-                    project.Id, 
+                    project.Id,
                     namespaceName,
                     Path.Combine(fullPath, "__NamespaceInitializer.cs"));
             }
@@ -212,7 +255,7 @@ public class RestructuringEngine
     {
         var oldPath = NamespaceToPath(namespaceName);
         var newPath = NamespaceToPath(namespaceName);
-        
+
         foreach (var document in project.Documents.ToList())
         {
             if (document.Folders.Any(f => f.StartsWith(oldPath)))
@@ -220,9 +263,9 @@ public class RestructuringEngine
                 var newFolders = document.Folders
                     .Select(f => f.Replace(oldPath, newPath))
                     .ToArray();
-                
+
                 var newFilePath = document.FilePath.Replace(oldPath, newPath);
-                
+
                 // Создание нового файла сгенерированного кода
                 var syntaxRoot = await document.GetSyntaxRootAsync();
                 var newDocument = project.AddDocument(
@@ -230,17 +273,17 @@ public class RestructuringEngine
                     syntaxRoot,
                     newFolders,
                     newFilePath);
-                
+
                 _filesToDelete.Add(document.FilePath);
                 project = newDocument.Project;
             }
         }
-        
+
         _solution = project.Solution;
     }
 
     private async Task GenerateInitialClassAsync(
-        ProjectId projectId, 
+        ProjectId projectId,
         string namespaceName,
         string filePath)
     {
@@ -260,13 +303,13 @@ public class RestructuringEngine
             .Split(Path.DirectorySeparatorChar)
             .SkipWhile(p => p == Path.GetDirectoryName(project.FilePath))
             .ToArray();
-        
+
         var document = project.AddDocument(
             Path.GetFileName(filePath),
             SourceText.From(classCode),
             folders,
             filePath);
-        
+
         _solution = document.Project.Solution;
     }
 
@@ -276,36 +319,36 @@ public class RestructuringEngine
         {
             var classSymbol = (await project.GetCompilationAsync())
                 .GetSymbolsWithName(className).FirstOrDefault() as INamedTypeSymbol;
-            
+
             if (classSymbol == null) continue;
-            
+
             var sourceDocument = project.GetDocument(classSymbol.Locations.First().SourceTree);
             var syntaxRoot = await sourceDocument.GetSyntaxRootAsync();
             var classNode = syntaxRoot.DescendantNodes()
                 .OfType<ClassDeclarationSyntax>()
                 .First(c => c.Identifier.Text == className);
-            
+
             // Генерация нового файла
             var newFilePath = GenerateFilePath(project, targetNamespace, $"{className}.cs");
             var newContent = GenerateClassFile(classNode, targetNamespace);
-            
+
             var newDocument = project.AddDocument(
                 $"{className}.cs",
                 newContent,
                 PathToFolders(NamespaceToPath(targetNamespace)),
                 newFilePath);
-            
+
             // Обновление исходного файла
             var newRoot = syntaxRoot.RemoveNode(classNode, SyntaxRemoveOptions.KeepNoTrivia);
             var updatedDocument = sourceDocument.WithSyntaxRoot(newRoot);
-            
+
             _solution = newDocument.Project.Solution
                 .WithDocumentSyntaxRoot(sourceDocument.Id, newRoot);
         }
     }
 
     private async Task GenerateArchitectureLayerAsync(
-        string layerName, 
+        string layerName,
         string[] subfolders)
     {
         var projectInfo = ProjectInfo.Create(
@@ -315,22 +358,22 @@ public class RestructuringEngine
             layerName,
             LanguageNames.CSharp,
             filePath: Path.Combine(
-                Path.GetDirectoryName(_solution.FilePath), 
-                layerName, 
+                Path.GetDirectoryName(_solution.FilePath),
+                layerName,
                 $"{layerName}.csproj"));
-        
+
         _solution = _solution.AddProject(projectInfo);
         var project = _solution.GetProject(projectInfo.Id);
-        
+
         // Генерация базовой структуры
         await GenerateNamespaceStructureAsync(layerName);
-        
+
         // Генерация подпапок
         foreach (var folder in subfolders)
         {
             var fullNs = $"{layerName}.{folder}";
             await GenerateNamespaceStructureAsync(fullNs);
-            await GenerateInitialClassAsync(project.Id, fullNs, 
+            await GenerateInitialClassAsync(project.Id, fullNs,
                 Path.Combine(
                     NamespaceToPath(fullNs),
                     $"{folder}Service.cs"));
@@ -575,4 +618,170 @@ public class RestructuringConfig
     public static async Task<RestructuringConfig> LoadAsync(FileInfo configFile) => 
         JsonSerializer.Deserialize<RestructuringConfig>(
             await File.ReadAllTextAsync(configFile.FullName));
+}
+
+// Анализатор зависимостей
+public class DependencyAnalyzer
+{
+    public async Task<DependencyGraph> BuildDependencyGraphAsync(Solution solution)
+    {
+        var graph = new DependencyGraph();
+
+        foreach (var project in solution.Projects)
+        {
+            var compilation = await project.GetCompilationAsync();
+            foreach (var tree in compilation.SyntaxTrees)
+            {
+                var model = compilation.GetSemanticModel(tree);
+                var walker = new DependencyWalker(model);
+                walker.Visit(await tree.GetRootAsync());
+                graph.Merge(walker.Dependencies);
+            }
+        }
+
+        return graph;
+    }
+
+    public IEnumerable<DependencyConflict> FindDependencyConflicts(
+        string sourceNs,
+        string targetNs,
+        DependencyGraph graph)
+    {
+        var conflicts = new List<DependencyConflict>();
+        var sourceDependencies = graph.GetDependencies(sourceNs);
+
+        foreach (var dependency in sourceDependencies)
+        {
+            // Проверка нарушения слоёв архитектуры
+            if (IsLayerViolation(sourceNs, targetNs, dependency))
+            {
+                conflicts.Add(new DependencyConflict(
+                    sourceNs,
+                    dependency,
+                    $"Dependency violates architecture layers: {dependency}"));
+            }
+
+            // Проверка циклических зависимостей
+            if (graph.HasCycle(sourceNs, dependency))
+            {
+                conflicts.Add(new DependencyConflict(
+                    sourceNs,
+                    dependency,
+                    $"Cyclic dependency detected: {sourceNs} <-> {dependency}"));
+            }
+        }
+
+        return conflicts;
+    }
+
+    private bool IsLayerViolation(string sourceNs, string targetNs, string dependency)
+    {
+        // Пример: Domain не должен зависеть от Application
+        var targetLayer = GetArchitectureLayer(targetNs);
+        var dependencyLayer = GetArchitectureLayer(dependency);
+
+        return dependencyLayer > targetLayer; // Нарушение направления зависимостей
+    }
+
+    private int GetArchitectureLayer(string ns)
+    {
+        if (ns.Contains(".Domain.")) return 0;
+        if (ns.Contains(".Application.")) return 1;
+        if (ns.Contains(".Infrastructure.")) return 2;
+        if (ns.Contains(".Presentation.")) return 3;
+        return 4;
+    }
+}
+
+public class DependencyConflict
+{
+    private string sourceNs;
+    private string dependency;
+    private string v;
+
+    public DependencyConflict(string sourceNs, string dependency, string v)
+    {
+        this.sourceNs = sourceNs;
+        this.dependency = dependency;
+        this.v = v;
+    }
+}
+
+// Вспомогательные модели
+public class DependencyGraph
+{
+    private readonly Dictionary<string, List<string>> _dependencies = new();
+
+    public void AddDependency(string from, string to)
+    {
+        if (!_dependencies.ContainsKey(from))
+            _dependencies[from] = new List<string>();
+
+        if (!_dependencies[from].Contains(to))
+            _dependencies[from].Add(to);
+    }
+
+    public IEnumerable<string> GetDependencies(string ns) =>
+        _dependencies.TryGetValue(ns, out var deps) ? deps : Enumerable.Empty<string>();
+
+    public bool HasCycle(string start, string current, HashSet<string> visited = null)
+    {
+        visited ??= new HashSet<string>();
+        if (visited.Contains(current)) return true;
+
+        visited.Add(current);
+        foreach (var dep in GetDependencies(current))
+        {
+            if (HasCycle(start, dep, visited))
+                return true;
+        }
+        return false;
+    }
+
+    public void Merge(DependencyGraph other)
+    {
+        foreach (var kvp in other._dependencies)
+        {
+            foreach (var dep in kvp.Value)
+            {
+                AddDependency(kvp.Key, dep);
+            }
+        }
+    }
+}
+
+
+public class DependencyWalker : CSharpSyntaxWalker
+{
+    private readonly SemanticModel _model;
+    public readonly DependencyGraph Dependencies = new();
+
+    public DependencyWalker(SemanticModel model) => _model = model;
+
+    public override void VisitIdentifierName(IdentifierNameSyntax node)
+    {
+        var symbol = _model.GetSymbolInfo(node).Symbol;
+        if (symbol?.ContainingNamespace != null)
+        {
+            var sourceNs = _model.GetEnclosingSymbol(node.SpanStart).Name;
+            var targetNs = symbol.ContainingNamespace.ToDisplayString();
+
+            if (!string.IsNullOrEmpty(sourceNs) && sourceNs != targetNs)
+            {
+                Dependencies.AddDependency(sourceNs, targetNs);
+            }
+        }
+        base.VisitIdentifierName(node);
+    }
+}
+
+public class RestructuringException : Exception
+{
+    public IEnumerable<string> ErrorDetails { get; }
+
+    public RestructuringException(string message, IEnumerable<string> details = null)
+        : base(message)
+    {
+        ErrorDetails = details ?? Enumerable.Empty<string>();
+    }
 }
